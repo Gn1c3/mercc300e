@@ -1,0 +1,29 @@
+def compute_crc_canfd(bitstring, data_length):
+    # Choose polynomial and width
+    if data_length <= 16:
+        poly = 0x1685B
+        width = 17
+    else:
+        poly = 0x102899
+        width = 21
+
+    # Append 'width' zero bits to the end of the bitstream
+    data = int(bitstring, 2) << width
+
+    # Align mask for the highest bit to data length
+    mask = 1 << (len(bitstring) + width - 1)
+
+    for _ in range(len(bitstring)):
+        if data & mask:
+            data ^= (poly << (len(bitstring) - 1))
+        mask >>= 1
+
+    # The CRC is the last 'width' bits
+    crc = data & ((1 << width) - 1)
+    return crc
+
+# Example:
+bits = '110100101010101...'  # Fill with your frame bits
+dlc = len(bits) // 8  # Number of data bytes
+crc_val = compute_crc_canfd(bits, dlc)
+print(hex(crc_val))
