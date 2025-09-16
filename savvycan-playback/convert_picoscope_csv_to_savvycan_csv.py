@@ -23,7 +23,7 @@ def csv_to_asc(input_csv, output_asc):
         id_col = find_col(fieldnames, ['ID', 'Id', 'id'])
         dlc_col = find_col(fieldnames, ['DLC', 'Len', 'length', 'dlc'])
         data_col = find_col(fieldnames, ['Data', 'data', 'DATA'])
-        fdf_col = find_col(fieldnames, ['FDF', 'EDL'])  # CAN FD frame flag
+        fdf_col = find_col(fieldnames, ['FDF', 'EDL', 'FD'])
         brs_col = find_col(fieldnames, ['BRS'])
         esi_col = find_col(fieldnames, ['ESI'])
 
@@ -33,12 +33,11 @@ def csv_to_asc(input_csv, output_asc):
         outfile.write('no internal events logged\n\n')
 
         for row in reader:
-            # Time in seconds to milliseconds
+            # Time in seconds
             try:
                 ts = float(row[timestamp_col])
             except Exception:
                 ts = 0.0
-            ms = ts * 1000
 
             canid = row.get(id_col, '0')
             try:
@@ -54,17 +53,12 @@ def csv_to_asc(input_csv, output_asc):
             except Exception:
                 dlc_int = len(data_bytes)
 
+            # CAN FD flags
             is_fd = row.get(fdf_col, '0') == '1' if fdf_col else False
             is_brs = row.get(brs_col, '0') == '1' if brs_col else False
             is_esi = row.get(esi_col, '0') == '1' if esi_col else False
 
-            # ASC CAN FD frame format example:
-            #   0.0000001 1 12345678x Rx d 64 01 02 ...    FD BRS ESI
-
-            frame_type = 'Rx'
-            x_fd = 'x' if is_fd else ''
-            data_str = ' '.join(data_bytes[:dlc_int])
-            # Add FD/flags comment if needed
+            # Compose FD/BRS/ESI flag section
             fd_flags = []
             if is_fd:
                 fd_flags.append('FD')
@@ -72,12 +66,13 @@ def csv_to_asc(input_csv, output_asc):
                 fd_flags.append('BRS')
             if is_esi:
                 fd_flags.append('ESI')
-            flag_str = ' '.join(fd_flags)
+            flag_str = f" [{' '.join(fd_flags)}]" if fd_flags else ''
 
-            line = f"{ms:.7f} 1 {canid_hex}{x_fd} {frame_type} d {dlc_int} {data_str}"
-            if flag_str:
-                line += f" {flag_str}"
-            line += '\n'
+            # Vector ASC FD format: <time> 1 <canid>x Rx d <len> <data> [FD BRS ESI]
+            x_fd = 'x' if is_fd else ''
+            data_str = ' '.join(data_bytes[:dlc_int])
+
+            line = f"{ts:.7f} 1 {canid_hex}{x_fd} Rx d {dlc_int} {data_str}{flag_str}\n"
             outfile.write(line)
 
 def main():
