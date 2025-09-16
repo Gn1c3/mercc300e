@@ -7,10 +7,6 @@ def find_col(fieldnames, options):
         if opt in fieldnames:
             return opt
     return None
-//
-//
-//
-//
 
 def hexstr_to_bytes(data_str):
     if not isinstance(data_str, str):
